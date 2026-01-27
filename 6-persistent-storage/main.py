@@ -1,4 +1,5 @@
 import asyncio
+import os
 
 from dotenv import load_dotenv
 from google.adk.runners import Runner
@@ -10,7 +11,9 @@ load_dotenv()
 
 # ===== PART 1: Initialize Persistent Session Service =====
 # Using SQLite database for persistent storage
-db_url = "sqlite:///./my_agent_data.db"
+db_path = os.path.join(os.path.dirname(__file__), "my_agent_data.db")
+db_url = f"sqlite+aiosqlite:///{db_path}"
+# original db_url = "sqlite:///./my_agent_data.db"
 session_service = DatabaseSessionService(db_url=db_url)
 
 
@@ -29,7 +32,7 @@ async def main_async():
 
     # ===== PART 3: Session Management - Find or Create =====
     # Check for existing sessions for this user
-    existing_sessions = session_service.list_sessions(
+    existing_sessions = await session_service.list_sessions(
         app_name=APP_NAME,
         user_id=USER_ID,
     )
@@ -41,7 +44,7 @@ async def main_async():
         print(f"Continuing existing session: {SESSION_ID}")
     else:
         # Create a new session with initial state
-        new_session = session_service.create_session(
+        new_session = await session_service.create_session(
             app_name=APP_NAME,
             user_id=USER_ID,
             state=initial_state,
@@ -54,6 +57,7 @@ async def main_async():
     runner = Runner(
         agent=memory_agent,
         app_name=APP_NAME,
+     #   session_service= session_service.database_session_factory(), # this is a factory method that returns a session service
         session_service=session_service,
     )
 
@@ -72,6 +76,7 @@ async def main_async():
             break
 
         # Process the user query through the agent
+       #  await call_agent_async(runner, runner.session_service.get_session(app_name=APP_NAME, user_id=USER_ID, session_id=SESSION_ID), USER_ID, SESSION_ID, user_input)
         await call_agent_async(runner, USER_ID, SESSION_ID, user_input)
 
 
