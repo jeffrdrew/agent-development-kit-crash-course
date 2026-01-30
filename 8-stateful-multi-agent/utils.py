@@ -49,28 +49,35 @@ async def update_interaction_history(session_service, app_name, user_id, session
         session = await session_service.get_session(
             app_name=app_name, user_id=user_id, session_id=session_id
         )
+        # print(f"--------------------------------")
+        # print(f"session: {session}")
 
-        # Get current interaction history
-        interaction_history = session.state.get("interaction_history", [])
+        # Get current interaction history (copy so we don't mutate a possible snapshot)
+        current_history = session.state.get("interaction_history", [])
+        new_interaction_history = list(current_history) if current_history else []
 
         # Add timestamp if not already present
         if "timestamp" not in entry:
             entry["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        # Add the entry to interaction history
-        interaction_history.append(entry)
+        # Append and assign back so the session service persists the update
+        new_interaction_history.append(entry)
+        session.state["interaction_history"] = new_interaction_history
 
-        # Create updated state
-        updated_state = session.state.copy()
-        updated_state["interaction_history"] = interaction_history
+        print(f"interaction_history: {session.state.get('interaction_history', [])}")
+        print(f"new entry: {entry}")
+        print(f"--------------------------------")
+
+       
 
         # Create a new session with updated state
-        await session_service.create_session(
-            app_name=app_name,
-            user_id=user_id,
-            session_id=session_id,
-            state=updated_state,
-        )
+            # await session_service.create_session(
+            #     app_name=app_name,
+            #     user_id=user_id,
+            #     session_id=session_id,
+            #     state=updated_state,
+            # )
+            
     except Exception as e:
         traceback.print_exc()
         print(f"Error updating interaction history: {e}")
@@ -122,7 +129,8 @@ async def display_state(
         # Handle the user name
         user_name = session.state.get("user_name", "Unknown")
         print(f"👤 User: {user_name}")
-
+        print(f"session.state.id: {session.state.get('id')}")
+       
         # Handle purchased courses
         purchased_courses = session.state.get("purchased_courses", [])
         if purchased_courses and any(purchased_courses):
