@@ -1,0 +1,13 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "8-stateful-multi-agent",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/8-stateful-multi-agent/main.py",
+      "cwd": "${workspaceFolder}/8-stateful-multi-agent",
+      "console": "integratedTerminal"
+    }
+  ]
+}

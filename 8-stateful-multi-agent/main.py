@@ -14,6 +14,8 @@ load_dotenv()
 session_service = InMemorySessionService()
 
 
+
+
 # ===== PART 2: Define Initial State =====
 # This will be used when creating a new session
 initial_state = {
@@ -48,7 +50,6 @@ async def main_async():
     # ===== PART 5: Interactive Conversation Loop =====
     print("\nWelcome to Customer Service Chat!")
     print("Type 'exit' or 'quit' to end the conversation.\n")
-
     while True:
         # Get user input
         user_input = input("You: ")
@@ -65,6 +66,11 @@ async def main_async():
 
         # Process the user query through the agent
         await call_agent_async(runner, USER_ID, SESSION_ID, user_input)
+
+        # Fetch current session for debugging (watch: current_session.state.interaction_history)
+        current_session = await session_service.get_session(
+            app_name=APP_NAME, user_id=USER_ID, session_id=SESSION_ID
+        )
 
     # ===== PART 6: State Examination =====
     # Show final session state

@@ -1,7 +1,9 @@
+import time
 import traceback
 
 from datetime import datetime
 
+from google.adk.events import Event, EventActions
 from google.genai import types
 
 
@@ -52,31 +54,33 @@ async def update_interaction_history(session_service, app_name, user_id, session
         # print(f"--------------------------------")
         # print(f"session: {session}")
 
-        # Get current interaction history (copy so we don't mutate a possible snapshot)
+        # Get current interaction history (from session state; may be a snapshot)
         current_history = session.state.get("interaction_history", [])
-        new_interaction_history = list(current_history) if current_history else []
+        new_interaction_history = list(current_history)
 
         # Add timestamp if not already present
         if "timestamp" not in entry:
             entry["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        # Append and assign back so the session service persists the update
         new_interaction_history.append(entry)
-        session.state["interaction_history"] = new_interaction_history
+        new_version = session.state.get("_state_version", 0) + 1
 
-        print(f"interaction_history: {session.state.get('interaction_history', [])}")
-        print(f"new entry: {entry}")
+        # Persist via append_event; direct session.state mutation is NOT persisted by the service
+        state_delta = {
+            "interaction_history": new_interaction_history,
+            "_state_version": new_version,
+        }
+        event = Event(
+            invocation_id=f"inv_update_history_{time.time_ns()}",
+            author="system",
+            actions=EventActions(state_delta=state_delta),
+            timestamp=time.time(),
+        )
+        await session_service.append_event(session, event)
+
+        print(f"new_interaction_history: {new_interaction_history}")
+        print(f"** new state version: {new_version} **")
         print(f"--------------------------------")
-
-       
-
-        # Create a new session with updated state
-            # await session_service.create_session(
-            #     app_name=app_name,
-            #     user_id=user_id,
-            #     session_id=session_id,
-            #     state=updated_state,
-            # )
             
     except Exception as e:
         traceback.print_exc()
@@ -129,8 +133,14 @@ async def display_state(
         # Handle the user name
         user_name = session.state.get("user_name", "Unknown")
         print(f"👤 User: {user_name}")
-        print(f"session.state.id: {session.state.get('id')}")
-       
+        print(f"Session ID: {session.id}")
+        # Object identity: same id() = same state object across calls; different = get_session returns a copy
+        print(f"state object id: {id(session.state)}")
+        # Optional: store state.get('_state_version') in state and bump on each update to detect changes
+        state_version = session.state.get("_state_version")
+        if state_version is not None:
+            print(f"state version: {state_version}")
+
         # Handle purchased courses
         purchased_courses = session.state.get("purchased_courses", [])
         if purchased_courses and any(purchased_courses):
